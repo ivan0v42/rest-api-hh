@@ -1,24 +1,52 @@
-import static io.restassured.RestAssured.get;
-
-import io.restassured.response.Response;
-import org.json.JSONArray;
-import org.json.JSONException;
+import io.restassured.RestAssured;
+import io.restassured.specification.RequestSpecification;
 import org.testng.Assert;
+import org.testng.annotations.BeforeTest;
 import org.testng.annotations.Test;
-/**
- * Created by artem on 20.11.2018.
- */
+
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.util.Properties;
+
+
 public class RestAssuredTestEmployers {
 
-    @Test(description = "GET")
-    public void getRequestExampleTest() throws JSONException {
-        Response response = get("https://api.hh.ru/employers/668019");
-        JSONArray jsonResponse = new JSONArray('['+response.asString()+']');
-        String employer_id = jsonResponse.getJSONObject(0).getString("id");
-        System.out.println(employer_id);
-        Assert.assertEquals(employer_id, "668019");
+    private String employerId;
+    private int statusCode;
+    private String baseUrl;
+    private String key;
+    private String nameCompany = "СимбирСофт,ООО";
+
+
+    @BeforeTest
+    public void getProps() throws IOException {
+        Properties property = new Properties();
+        property.load(new FileInputStream("src/test/properties/test-hh-rest-api.properties"));
+        employerId = property.getProperty("employerId");
+        statusCode = Integer.parseInt(property.getProperty("statusCode"));
+        baseUrl = property.getProperty("baseUrl");
+        key = property.getProperty("key");
+       // nameCompany = property.getProperty("nameCompany"); //проблема c кодировкой IDEA
     }
 
+    @Test
+        public void testSearchVacancies() {
+            RequestSpecification request = RestAssured.given().header("Content-Type", "application/json\r\n");
+
+            Vacancies vacancies = request
+                    .params(key, employerId)
+                    .get(baseUrl)
+                    .then()
+                    .statusCode(statusCode)
+                    .extract()
+                    .as(Vacancies.class);
+
+            for (VacancyInfo vacancy :
+                    vacancies.getAllVacancies()) {
+                Assert.assertEquals(vacancy.employer.id, employerId);
+                Assert.assertEquals(vacancy.employer.name, nameCompany);
+            }
+    }
 }
 
 
